@@ -1,13 +1,13 @@
 import unittest
 from pathlib import Path
 
-from security import scan_security
+from repomind.security import scan_security
 
 
 class TestSecurity(unittest.TestCase):
 
     def setUp(self):
-        self.file = Path("tests/fixtures/security_test.py")
+        self.file = Path(__file__).parent / "fixtures" / "security_test.py"
 
     def test_detects_eval(self):
         issues = scan_security(self.file)

@@ -1,13 +1,13 @@
 import unittest
 from pathlib import Path
 
-from complexity import calculate_complexity
+from repomind.complexity import calculate_complexity
 
 
 class TestComplexity(unittest.TestCase):
 
     def setUp(self):
-        self.file = Path("tests/fixtures/complex_test.py")
+        self.file = Path(__file__).parent / "fixtures" / "complex_test.py"
 
     def test_complexity_returns_list(self):
         result = calculate_complexity(self.file)

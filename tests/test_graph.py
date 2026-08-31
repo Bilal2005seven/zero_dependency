@@ -1,6 +1,6 @@
 import unittest
 
-from graph import build_dependency_graph, detect_cycles
+from repomind.graph import build_dependency_graph, detect_cycles
 
 
 class TestGraph(unittest.TestCase):

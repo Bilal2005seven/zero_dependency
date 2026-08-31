@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "repomind"
+version = "0.1.0"
+description = "A Python repository analysis CLI tool"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+
+keywords = [
+    "cli",
+    "code-analysis",
+    "complexity",
+    "security",
+    "dependency-graph",
+    "developer-tools"
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+dependencies = []
+
+[project.scripts]
+repomind = "repomind.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["repomind*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

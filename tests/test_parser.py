@@ -1,13 +1,13 @@
 import unittest
 from pathlib import Path
 
-from parser import parse_file
+from repomind.parser import parse_file
 
 
 class TestParser(unittest.TestCase):
 
     def setUp(self):
-        self.file = Path("sample_project/main.py")
+        self.file = Path(__file__).parent.parent / "sample_project" / "main.py"
 
     def test_parser_returns_data(self):
         result = parse_file(self.file)

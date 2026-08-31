@@ -2,19 +2,62 @@ import sys
 import argparse
 from pathlib import Path
 
-from scanner import scan_repository
-from parser import parse_file
-from graph import build_dependency_graph, detect_cycles
-from complexity import calculate_complexity
-from deadcode import find_unused_functions
-from security import scan_security
-from health import calculate_health_score
+from repomind.scanner import scan_repository
+from repomind.parser import parse_file
+from repomind.graph import build_dependency_graph, detect_cycles
+from repomind.complexity import calculate_complexity
+from repomind.deadcode import find_unused_functions
+from repomind.security import scan_security
+from repomind.health import calculate_health_score
+from repomind.html_report import generate_html_report
+from repomind import __version__
 
 
 def print_header(title):
     print("\n" + "=" * 50)
     print(title)
     print("=" * 50)
+
+
+def _serve_and_open(html_path: Path) -> None:
+    """
+    Start a localhost HTTP server serving html_path's directory,
+    open the dashboard in the default browser, and block until Ctrl+C.
+    """
+    import http.server
+    import socket
+    import threading
+    import webbrowser
+
+    directory = str(html_path.parent.resolve())
+    filename = html_path.name
+
+    # Find a free port by binding to port 0 (OS assigns one)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("localhost", 0))
+        port = sock.getsockname()[1]
+
+    class _Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=directory, **kwargs)
+
+        def log_message(self, format, *args):  # suppress access log noise
+            pass
+
+    httpd = http.server.HTTPServer(("localhost", port), _Handler)
+    url = f"http://localhost:{port}/{filename}"
+
+    print(f"\nRepoMind dashboard → {url}")
+    print("Press Ctrl+C to stop the server.\n")
+
+    # Open browser slightly after the server is ready
+    threading.Timer(0.5, lambda: webbrowser.open(url)).start()
+
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\nServer stopped.")
+        httpd.server_close()
 
 
 def main():
@@ -32,7 +75,7 @@ def main():
         "path",
         nargs="?",
         default=".",
-        help="Path to the repository"
+        help="Path to the repository (default: current directory)"
     )
 
     cli.add_argument(
@@ -68,12 +111,34 @@ def main():
 
     cli.add_argument(
         "--health",
-        action = "store_true",
+        action="store_true",
         help="Show health analysis"
+    )
+
+    cli.add_argument(
+        "--html",
+        nargs="?",
+        const=True,          # --html with no filename → open browser mode
+        default=None,        # not provided at all
+        metavar="OUTPUT",
+        help=(
+            "Generate an HTML dashboard and open it in the browser. "
+            "Optionally supply OUTPUT to write to a specific file "
+            "(e.g. --html report.html). Without OUTPUT, a temporary "
+            "file is used and a local HTTP server is started."
+        )
+    )
+
+    cli.add_argument(
+        "--version",
+        action="version",
+        version=f"repomind {__version__}"
     )
 
     args = cli.parse_args()
 
+    # Use Path(".").resolve() so the CWD at invocation time is used,
+    # not the package installation directory.
     root = Path(args.path).resolve()
 
     # ==================================================
@@ -155,9 +220,8 @@ def main():
     all_security_issues = []
 
     for analysis in all_analysis:
-        all_security_issues.extend(
-            analysis["security"]
-        )
+        for issue in analysis["security"]:
+            all_security_issues.append({**issue, "file": analysis["path"]})
 
     # ==================================================
     # COMPLEXITY
@@ -192,6 +256,44 @@ def main():
     )
 
     # ==================================================
+    # HTML MODE
+    # ==================================================
+
+    if args.html is not None:
+
+        # Determine output path
+        if args.html is True:
+            # --html with no filename: write next to CWD, open via server
+            output_path = Path.cwd() / "repomind_report.html"
+            open_server = True
+        else:
+            # --html report.html: write to explicit file, open via server
+            output_path = Path(args.html)
+            open_server = True
+
+        report_data = {
+            "root": str(root),
+            "files": files,
+            "total_lines": total_lines,
+            "total_size": total_size,
+            "all_analysis": all_analysis,
+            "dependency_graph": dependency_graph,
+            "cycles": cycles,
+            "unused_functions": unused_functions,
+            "all_security_issues": all_security_issues,
+            "all_functions": all_functions,
+            "health": health,
+        }
+
+        generate_html_report(report_data, output_path)
+        print(f"HTML report written to: {output_path.resolve()}")
+
+        if open_server:
+            _serve_and_open(output_path)
+
+        return
+
+    # ==================================================
     # DETERMINE MODE
     # ==================================================
 
@@ -216,7 +318,7 @@ def main():
             for issue in all_security_issues:
 
                 print(
-                    f"⚠ {issue['type']} "
+                    f"[!] {issue['type']} "
                     f"[{issue['severity']}] "
                     f"{issue['file']} "
                     f"(line {issue['line']})"
@@ -224,7 +326,7 @@ def main():
 
         else:
 
-            print("✓ No security issues found")
+            print("[OK] No security issues found")
 
     # ==================================================
     # GRAPH MODE
@@ -243,12 +345,12 @@ def main():
                 for dependency in dependencies:
 
                     print(
-                        f"  └──> {dependency}"
+                        f"  --> {dependency}"
                     )
 
             else:
 
-                print("  └──> None")
+                print("  --> None")
 
         print_header("CIRCULAR DEPENDENCIES")
 
@@ -256,16 +358,16 @@ def main():
 
             for cycle in cycles:
 
-                print("⚠ CYCLE DETECTED:")
+                print("[!] CYCLE DETECTED:")
 
                 print(
-                    " → ".join(cycle)
+                    " -> ".join(cycle)
                 )
 
         else:
 
             print(
-                "✓ No circular dependencies detected"
+                "[OK] No circular dependencies detected"
             )
 
     # ==================================================
@@ -549,7 +651,7 @@ def main():
             for issue in all_security_issues:
 
                 print(
-                    f"  ⚠ {issue['type']} "
+                    f"  [!] {issue['type']} "
                     f"[{issue['severity']}] "
                     f"{issue['file']} "
                     f"(line {issue['line']})"
@@ -557,7 +659,7 @@ def main():
 
         else:
 
-            print("  ✓ No issues found")
+            print("  [OK] No issues found")
 
         # --------------------------------------------------
         # DEAD CODE
@@ -578,7 +680,7 @@ def main():
         else:
 
             print(
-                "✓ No potentially unused "
+                "[OK] No potentially unused "
                 "functions found"
             )
 
@@ -597,12 +699,12 @@ def main():
                 for dependency in dependencies:
 
                     print(
-                        f"  └──> {dependency}"
+                        f"  --> {dependency}"
                     )
 
             else:
 
-                print("  └──> None")
+                print("  --> None")
 
         # --------------------------------------------------
         # CYCLES
@@ -614,16 +716,16 @@ def main():
 
             for cycle in cycles:
 
-                print("⚠ CYCLE DETECTED:")
+                print("[!] CYCLE DETECTED:")
 
                 print(
-                    " → ".join(cycle)
+                    " -> ".join(cycle)
                 )
 
         else:
 
             print(
-                "✓ No circular dependencies detected"
+                "[OK] No circular dependencies detected"
             )
 
         # --------------------------------------------------

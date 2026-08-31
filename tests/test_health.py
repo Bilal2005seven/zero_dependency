@@ -1,6 +1,6 @@
 import unittest
 
-from health import calculate_health_score
+from repomind.health import calculate_health_score
 
 
 class TestHealth(unittest.TestCase):

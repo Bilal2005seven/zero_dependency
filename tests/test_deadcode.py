@@ -1,6 +1,6 @@
 import unittest
 
-from deadcode import find_unused_functions
+from repomind.deadcode import find_unused_functions
 
 
 class TestDeadCode(unittest.TestCase):
