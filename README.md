@@ -163,6 +163,26 @@ Running `repomind --html` opens a dark-mode dashboard in your browser with:
 - **Interactive dependency graph** — D3.js force-directed graph, draggable and zoomable
 - **File table** — all files sorted by size
 
+### Overview & Security
+
+![Overview and Security Issues](docs/dashboard_overview.png)
+
+### Complexity Analysis
+
+![Cyclomatic Complexity Table](docs/dashboard_complexity.png)
+
+### Unused Code & Circular Dependencies
+
+![Unused Functions and Circular Dependencies](docs/dashboard_unused_cycles.png)
+
+### Interactive Dependency Graph
+
+![D3.js Dependency Graph](docs/dashboard_dep_graph.png)
+
+### File Explorer
+
+![Files Table](docs/dashboard_files.png)
+
 ---
 
 ## How It Works
